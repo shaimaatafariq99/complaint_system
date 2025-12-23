@@ -1,6 +1,0 @@
-[build]
-builder = "LARAVEL"
-buildCommand = "composer install --no-dev --optimize-autoloader"
-
-[start]
-cmd = "php artisan serve --host=0.0.0.0 --port=$PORT"
