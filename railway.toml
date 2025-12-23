@@ -1,5 +1,5 @@
 [build]
-builder = "NIXPACKS"
+builder = "LARAVEL"
 buildCommand = "composer install --no-dev --optimize-autoloader"
 
 [start]

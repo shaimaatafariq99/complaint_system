@@ -45,7 +45,7 @@ class OTPMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            // تأكد من أن لديك ملف في resources/views/emails/otp.blade.php
+           
             view: 'emails.otp', 
         );
     }

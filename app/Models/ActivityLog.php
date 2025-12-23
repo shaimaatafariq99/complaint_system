@@ -9,7 +9,7 @@ class ActivityLog extends Model
 {
     use HasFactory;
 
-    protected $table = 'activity_logs'; // <--- حددنا اسم الجدول
+    protected $table = 'activity_logs'; 
 
     protected $fillable = [
         'user_id',
