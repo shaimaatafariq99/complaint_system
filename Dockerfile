@@ -24,9 +24,10 @@ WORKDIR /var/www/html
 COPY . .
 
 # تثبيت Composer
-COPY --from=getcomposer:latest /usr/bin/composer /usr/bin/composer
+FROM composer:latest AS composer
+WORKDIR /app
+COPY . .
 RUN composer install --no-dev --optimize-autoloader
-
 # تغيير صلاحيات المجلدات لتناسب Apache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
