@@ -1,7 +1,7 @@
-# 1. استخدام نسخة PHP الرسمية مع Apache (تأتي بـ mpm_prefork مفعلاً تلقائياً)
+# 1. استخدام نسخة PHP الرسمية مع Apache
 FROM php:8.2-apache
 
-# 2. تثبيت إضافات النظام و PHP اللازمة
+# 2. تثبيت الإضافات الضرورية للنظام ولـ PHP
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
@@ -12,35 +12,35 @@ RUN apt-get update && apt-get install -y \
     curl \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# 3. تثبيت Composer من الصورة الرسمية
+# 3. تثبيت Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 4. تفعيل موديل Rewrite وتجهيز إعدادات Apache
-# ملاحظة: تم حذف محاولة تبديل MPM يدوياً لأنها تسبب التعارض AH00534 في صور PHP الرسمية
-RUN a2enmod rewrite
+# 4. الحل الجذري لخطأ MPM:
+# نقوم بحذف كافة ملفات MPM المفعلة يدوياً ثم نُفعل prefork فقط لضمان عدم التكرار
+RUN rm -f /etc/apache2/mods-enabled/mpm_* \
+    && a2enmod mpm_prefork \
+    && a2enmod rewrite
 
-# 5. ضبط المجلد الرئيسي للعمل
+# 5. ضبط المجلد الرئيسي
 WORKDIR /var/www/html
 
-# 6. نسخ ملفات المشروع بالكامل
+# 6. نسخ ملفات المشروع
 COPY . .
 
-# 7. تثبيت مكتبات Composer
-# تم استخدام --no-scripts لتجنب المشاكل أثناء بناء الصورة إذا كان هناك ملفات ناقصة
+# 7. تثبيت المكتبات (تجاهل السكريبتات لتجنب الأخطاء أثناء البناء)
 RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs --no-scripts
 
-# 8. ضبط الصلاحيات للمجلدات المهمة في Laravel
+# 8. الصلاحيات
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 9. تعديل إعدادات Apache لتوجه إلى مجلد public (لعمل Laravel بشكل صحيح)
+# 9. تعديل المسار ليوجه إلى مجلد public الخاص بـ Laravel
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-available/*.conf
 RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# 10. إخبار المنصة بأن التطبيق يستمع للمنفذ 80
+# 10. إعداد المنفذ
 EXPOSE 80
 
-# 11. تشغيل Apache في الواجهة الأمامية (Foreground)
-# هذا الأمر يضمن بقاء الحاوية (Container) تعمل واستقبال الطلبات
+# 11. الأمر النهائي للتشغيل
 CMD ["apache2-foreground"]
