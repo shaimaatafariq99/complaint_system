@@ -12,32 +12,34 @@ RUN apt-get update && apt-get install -y \
     curl \
     && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# 3. تثبيت Composer داخل نفس الحاوية (الطريقة الصحيحة)
+# 3. تثبيت Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 4. تفعيل موديل Apache Rewrite (ضروري لـ Laravel)
-RUN a2enmod rewrite
+# 4. تفعيل موديلات Apache الضرورية وتعطيل المتعارضة
+# تم نقل هذا الأمر للأعلى لضمان إعداد النظام قبل نسخ الملفات
+RUN a2dismod mpm_event mpm_worker || true \
+    && a2enmod mpm_prefork \
+    && a2enmod rewrite
 
-# 5. ضبط المجلد الرئيسي داخل الحاوية
+# 5. ضبط المجلد الرئيسي
 WORKDIR /var/www/html
 
 # 6. نسخ ملفات المشروع
 COPY . .
 
-# 7. تثبيت المكتبات (تجاهل قيود المنصة لضمان التوافق)
+# 7. تثبيت المكتبات (تجاهل قيود المنصة)
 RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
-# 8. تغيير الصلاحيات (يجب أن يتم بعد نسخ الملفات)
+# 8. الصلاحيات
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# 9. تعديل إعدادات Apache ليكون المجلد الرئيسي هو public
+# 9. تعديل إعدادات Apache للمجلد public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-available/*.conf
 RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
-# تعطيل جميع موديلات MPM وتفعيل prefork فقط لمنع التداخل
-RUN a2dismod mpm_event mpm_worker || true && a2enmod mpm_prefork
 
-# إعادة تشغيل الخدمات للتأكد
-RUN service apache2 restart || true
 # 10. ضبط المنفذ
 EXPOSE 80
+
+# 11. أمر التشغيل النهائي لضمان عدم تكرار خطأ MPM
+CMD ["apache2-foreground"]
