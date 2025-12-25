@@ -34,6 +34,10 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-available/*.conf
 RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# تعطيل جميع موديلات MPM وتفعيل prefork فقط لمنع التداخل
+RUN a2dismod mpm_event mpm_worker || true && a2enmod mpm_prefork
 
+# إعادة تشغيل الخدمات للتأكد
+RUN service apache2 restart || true
 # 10. ضبط المنفذ
 EXPOSE 80
