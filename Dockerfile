@@ -27,7 +27,9 @@ COPY . .
 FROM composer:latest AS composer
 WORKDIR /app
 COPY . .
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
+
+
 # تغيير صلاحيات المجلدات لتناسب Apache
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
