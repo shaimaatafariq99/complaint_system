@@ -1,7 +1,7 @@
-# استخدام نسخة PHP الرسمية مع Apache
+# 1. استخدام نسخة PHP الرسمية مع Apache
 FROM php:8.2-apache
 
-# تثبيت الإضافات اللازمة لـ Laravel
+# 2. تثبيت الإضافات اللازمة لنظام التشغيل و PHP
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
@@ -9,42 +9,31 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     git \
-    curl
+    curl \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# تثبيت إضافات PHP لـ MySQL أو PostgreSQL
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+# 3. تثبيت Composer داخل نفس الحاوية (الطريقة الصحيحة)
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# تفعيل موديل Apache Rewrite (ضروري لـ Laravel)
+# 4. تفعيل موديل Apache Rewrite (ضروري لـ Laravel)
 RUN a2enmod rewrite
 
-# ضبط المجلد الرئيسي داخل الحاوية
+# 5. ضبط المجلد الرئيسي داخل الحاوية
 WORKDIR /var/www/html
 
-# نسخ ملفات المشروع
+# 6. نسخ ملفات المشروع
 COPY . .
 
-# تثبيت Composer
-FROM composer:latest AS composer
-# 1. تحديد مسار العمل الصحيح (يفضل استخدام المسار الافتراضي لـ Apache)
-WORKDIR /var/www/html
-
-# 2. نسخ الملفات إلى المسار الحالي
-COPY . .
-
-# 3. تشغيل الـ composer (مع تجاهل قيود الإصدار لحل مشكلة PHP 8.5)
+# 7. تثبيت المكتبات (تجاهل قيود المنصة لضمان التوافق)
 RUN composer install --no-dev --optimize-autoloader --ignore-platform-reqs
 
-# 4. تغيير الصلاحيات الآن ستعمل لأن المجلدات موجودة في المسار الحالي
+# 8. تغيير الصلاحيات (يجب أن يتم بعد نسخ الملفات)
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# تغيير المجلد الرئيسي ليكون public (مهم جداً)
-# تعريف المسار الجديد
+# 9. تعديل إعدادات Apache ليكون المجلد الرئيسي هو public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-
-# تعديل إعدادات Apache لاستخدام المسار الجديد
 RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/sites-available/*.conf
 RUN sed -ri -e "s!/var/www/html!${APACHE_DOCUMENT_ROOT}!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-
-# ضبط المنفذ (Render يمرر المنفذ تلقائياً)
+# 10. ضبط المنفذ
 EXPOSE 80
